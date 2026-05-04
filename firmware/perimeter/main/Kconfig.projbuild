@@ -1,0 +1,128 @@
+menu "CSI Node Configuration"
+
+    config SAR_MODE
+        bool "High-rate mode - prioritize CSI rate over power"
+        default y
+        help
+            When enabled, the perimeter is tuned for maximum CSI rate:
+              - WiFi power-save is disabled (WIFI_PS_NONE instead of MIN_MODEM).
+              - link_reporter runs at SAR_LINK_REPORT_INTERVAL_MS (default 50 ms).
+              - stream_sender ENOMEM cooldown shortened to 10 ms.
+
+    config SAR_LINK_REPORT_INTERVAL_MS
+        int "link_reporter interval for high-rate mode (ms)"
+        default 50
+        range 10 5000
+        depends on SAR_MODE
+        help
+            Periodic link-variance report interval used when SAR_MODE=y.
+            50 ms = 20 Hz to align with the 50 Hz CSI target.
+
+    config LINK_REPORT_INTERVAL_MS
+        int "link_reporter interval (ms) - non-SAR default"
+        default 200
+        range 10 60000
+        help
+            Periodic link-variance report interval used when SAR_MODE=n.
+
+    config CSI_NODE_ID
+        int "Node ID (0-255)"
+        default 1
+        range 0 255
+
+    config CSI_TARGET_IP
+        string "Aggregator IP address"
+        default "192.168.1.100"
+
+    config CSI_TARGET_PORT
+        int "Aggregator UDP port"
+        default 5005
+        range 1024 65535
+
+    config CSI_WIFI_SSID
+        string "WiFi SSID"
+        default "CSI_NET_V2"
+
+    config CSI_WIFI_PASSWORD
+        string "WiFi Password"
+        default ""
+        help
+            Password for the WiFi network. Leave empty for open networks.
+
+    config CSI_WIFI_CHANNEL
+        int "WiFi Channel (1-13)"
+        default 6
+        range 1 13
+
+endmenu
+
+menu "Edge Intelligence"
+
+    config EDGE_TIER
+        int "Edge processing tier (0=raw, 1=basic, 2=full)"
+        default 2
+        range 0 2
+        help
+            0 = Raw passthrough (no on-device DSP).
+            1 = Basic presence/motion detection.
+            2 = Full pipeline (vitals, multi-person).
+
+    config EDGE_VITAL_INTERVAL_MS
+        int "Vitals packet send interval (ms)"
+        default 1000
+        range 100 10000
+
+    config EDGE_TOP_K
+        int "Top-K subcarriers to track"
+        default 8
+        range 1 32
+        help
+            Number of highest-variance subcarriers used for DSP.
+
+    config EDGE_FALL_THRESH
+        int "Fall detection threshold (x1000)"
+        default 15000
+        range 100 50000
+        help
+            Phase-acceleration threshold for fall detection.
+            Value is divided by 1000 at runtime to get rad/s^2.
+            Normal walking produces 2-5 rad/s^2.
+
+    config EDGE_POWER_DUTY
+        int "Power duty cycle percentage"
+        default 100
+        range 10 100
+        help
+            Active duty cycle for battery-powered nodes. 100 = always on.
+
+endmenu
+
+menu "Packet Type Gates"
+
+    config GH_PKT_IQ_ENABLE
+        bool "Emit raw I/Q streaming (0xC5110006) packets"
+        default n
+        help
+            When enabled, edge_processing emits a raw I/Q packet
+            (magic 0xC5110006) every Nth CSI frame per
+            GH_PKT_IQ_DIVIDER. Primary signal consumed by the host
+            detector.
+
+    config GH_PKT_IQ_DIVIDER
+        int "I/Q rate divider (1 CSI frame in N becomes an I/Q packet)"
+        depends on GH_PKT_IQ_ENABLE
+        range 2 25
+        default 5
+        help
+            Effective IQ rate = CSI rate / divider.
+
+    config GH_PKT_VITALS_ENABLE
+        bool "Emit on-device vitals (0xC5110002) packets"
+        default n
+        help
+            When enabled, vitals_timer_cb emits the 32-byte vitals
+            packet (magic 0xC5110002) at 1 Hz. On-device vitals
+            computation continues regardless; only wire emission is
+            gated by this option.
+
+endmenu

@@ -1,0 +1,37 @@
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
+CONFIG_ESP_WIFI_NVS_ENABLED=y
+CONFIG_LWIP_MAX_SOCKETS=8
+
+# Enable the global lwip_stats struct so udp_bridge_task can log per-protocol
+# UDP/mailbox counters every 30s. Cost: ~1 KB RAM, a few % CPU.
+CONFIG_LWIP_STATS=y
+
+# IRAM optimizations for throughput.
+CONFIG_LWIP_IRAM_OPTIMIZATION=y
+CONFIG_LWIP_EXTRA_IRAM_OPTIMIZATION=y
+CONFIG_ESP_WIFI_RX_IRAM_OPT=y
+
+# Pin lwIP TCPIP task to CPU1 so the WiFi driver (which is pinned to CPU0)
+# does not contend with the network stack.
+CONFIG_LWIP_TCPIP_TASK_AFFINITY=0x2
+# CONFIG_LWIP_TCPIP_TASK_AFFINITY_NO_AFFINITY is not set
+
+# WiFi TX buffer count — sized for sustained outbound forward to operator host.
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=64
+
+# AMPDU TX block-ack window — complements the TX buffer count for steady-state
+# throughput.
+CONFIG_ESP_WIFI_TX_BA_WIN=16
+
+
+# Note: Console baud stays at default 115200 for readable ESP_LOG output.
+# Data UART (UART1) baud is set in code at 921600.
+
+# Coordinator host-bridge mode default: WiFi UDP forward to the operator host.
+# USB-CDC COBS is available as an alternative via `idf.py menuconfig` ->
+# "GlassHouse Coordinator" -> "Coordinator host-bridge mode", or by overriding
+# sdkconfig with `CONFIG_GH_BRIDGE_USB=y`.
+# CONFIG_GH_BRIDGE_USB is not set
+CONFIG_GH_BRIDGE_WIFI=y
+# CONFIG_GH_BRIDGE_BOTH is not set

@@ -1,0 +1,74 @@
+menu "GlassHouse Coordinator"
+
+    choice GH_BRIDGE_MODE
+        prompt "Coordinator host-bridge mode"
+        default GH_BRIDGE_WIFI
+        help
+            Selects how the coordinator forwards perimeter packets to the host.
+            USB: COBS-framed UDP payloads over USB-Serial/JTAG.
+            WIFI: raw UDP forward to the operator host over the coordinator's
+                  STA interface.
+            BOTH: forward over both transports simultaneously (parity test).
+
+        config GH_BRIDGE_USB
+            bool "USB-CDC COBS only"
+
+        config GH_BRIDGE_WIFI
+            bool "WiFi UDP forward to operator host"
+
+        config GH_BRIDGE_BOTH
+            bool "BOTH (USB and WiFi simultaneously — parity-test mode)"
+
+    endchoice
+
+    config GH_OPWIFI_SSID
+        string "Operator WiFi SSID (Kconfig fallback; NVS overrides at boot)"
+        default ""
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+        help
+            Build-time default SSID for the operator WiFi the coordinator's STA
+            joins. At boot, the coordinator reads NVS key `opwifi.ssid`; if set,
+            NVS wins.
+
+    config GH_OPWIFI_PSK
+        string "Operator WiFi PSK (Kconfig fallback; NVS overrides at boot)"
+        default ""
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+
+    config GH_OPWIFI_HOST_IP
+        string "Operator host IPv4 (Kconfig fallback; NVS overrides at boot)"
+        default "192.168.137.1"
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+        help
+            Default is the Windows Mobile Hotspot's typical router IP.
+
+    config GH_OPWIFI_HOST_PORT
+        int "Operator host UDP port (Kconfig fallback; NVS overrides at boot)"
+        default 4211
+        range 1024 65535
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+        help
+            Distinct from the perimeter→coordinator UDP port (4210) to avoid
+            accidental loopback.
+
+    config GH_OPWIFI_RECONNECT_MS
+        int "STA reconnect initial delay on disconnect (ms)"
+        default 2000
+        range 100 60000
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+        help
+            Initial delay before the first STA reconnect attempt after
+            WIFI_EVENT_STA_DISCONNECTED. Subsequent retries use exponential
+            backoff capped at 30 s (see coord wifi event handler).
+
+    config GH_OPWIFI_RECONNECT_MAX_ATTEMPTS
+        int "STA reconnect max attempts before giving up (0 = infinite)"
+        default 0
+        range 0 1000
+        depends on GH_BRIDGE_WIFI || GH_BRIDGE_BOTH
+        help
+            0 = infinite retry (bench default). Set to a finite number for
+            field deployment where failing fast is preferable to spinning
+            forever on an unreachable operator WiFi.
+
+endmenu

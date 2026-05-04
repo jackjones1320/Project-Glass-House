@@ -1,0 +1,92 @@
+# ESP32-S3 CSI Node — Default SDK Configuration
+# Applied automatically by idf.py when no sdkconfig exists.
+
+# Target: ESP32-S3
+CONFIG_IDF_TARGET="esp32s3"
+
+# Custom partition table.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"
+
+# Flash configuration: 4 MB (Quad SPI).
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+
+# Compiler optimization: optimize for size to reduce binary.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+# Enable CSI (Channel State Information) in the WiFi driver.
+CONFIG_ESP_WIFI_CSI_ENABLED=y
+
+# NVS encryption disabled by default (requires eFuse provisioning).
+# CONFIG_NVS_ENCRYPTION is not set
+
+# Disable unused features to reduce binary size.
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# LWIP: enable extended socket options for UDP multicast.
+CONFIG_LWIP_SO_RCVBUF=y
+
+# lwIP mailbox sizes raised so the tcpip task and UDP recv queues do not
+# starve the CSI callback -> sendto path with ENOMEM at the 50 Hz target.
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=32
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+
+# FreeRTOS: increase main task stack for CSI processing.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# esp_timer task stack at 8192 bytes. Multiple timer callbacks (NDP probe,
+# heartbeat, link_reporter, vitals, telemetry_sender) run on this task.
+# NDP probe calls esp_wifi_80211_tx, which has a deep internal stack;
+# stream_sender_send may cascade into sendto -> lwIP. The default 3584
+# is too tight to cover those call chains.
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=8192
+
+# Core dump to flash partition (declared in partitions_4mb.csv). Panics
+# write a full ELF core dump; retrieve post-mortem via
+#   espcoredump.py info_corefile -c partition_coredump.bin firmware.elf
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+CONFIG_ESP_COREDUMP_CHECK_BOOT=y
+# CONFIG_ESP_COREDUMP_ENABLE_TO_NONE is not set
+
+# Heap poisoning: light mode (head canary only) keeps the malloc/free
+# fast path lean for the per-CSI-frame sendto. Switch to
+# COMPREHENSIVE for memory-corruption debugging.
+# CONFIG_HEAP_POISONING_COMPREHENSIVE is not set
+# CONFIG_HEAP_POISONING_DISABLED is not set
+CONFIG_HEAP_POISONING_LIGHT=y
+
+# FreeRTOS stack overflow canary: writes a canary at the end of each task
+# stack, validated on every context switch. Panics with a clean
+# "task X overflowed its stack" message instead of falling into UB.
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+
+# Enable uxTaskList/uxTaskGetSystemState so telemetry can report the
+# minimum-remaining stack across all tasks.
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+
+# Disable RX AMPDU. The perimeter still negotiates 11n and HT40 bandwidth;
+# disabling RX block-ack avoids a known AMPDU de-aggregation defect in the
+# WiFi driver that triggers double-free crashes under sustained CSI traffic.
+CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n
+
+# =============================================================
+# Wire-format gates
+# =============================================================
+# The detector consumes IQ (0xC5110006), telemetry (0xC5110009),
+# heartbeat (1-byte 0xAA), and link-reporter (10-byte) frames.
+# Telemetry / heartbeat / link-reporter have no Kconfig gate and are
+# always emitted. IQ is the primary signal.
+#
+# Each option is pinned here even when its Kconfig default already
+# matches, so a clean rebuild from sdkconfig.defaults is reproducible.
+
+# Raw I/Q streaming (primary signal).
+# divider=2 -> ~25 Hz/node IQ, ~100 Hz aggregate at host.
+CONFIG_GH_PKT_IQ_ENABLE=y
+CONFIG_GH_PKT_IQ_DIVIDER=2
+
+# 1 Hz on-device vitals frame. Detector decodes but does not use; off.
+CONFIG_GH_PKT_VITALS_ENABLE=n

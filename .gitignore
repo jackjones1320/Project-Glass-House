@@ -1,0 +1,12 @@
+# Provisioning data containing WiFi credentials. Generate locally
+# from a template and flash via firmware/perimeter/provision.py;
+# do not commit.
+firmware/coordinator/coord_nvs.bin
+firmware/coordinator/coord_opwifi.csv
+firmware/perimeter/nvs.bin
+firmware/perimeter/nvs_config.csv
+
+# Python venv + bytecode
+venv/
+__pycache__/
+*.pyc
